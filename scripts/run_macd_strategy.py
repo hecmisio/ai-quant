@@ -3,14 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from src.data import normalize_kline_dataframe, read_csv_with_fallback
+from _common import load_price_data, write_output_csv
 from src.strategies.trend import MACDStrategy
 
 
@@ -35,8 +29,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    data, _ = read_csv_with_fallback(args.input_csv)
-    data = normalize_kline_dataframe(data)
+    data = load_price_data(args.input_csv)
     strategy = MACDStrategy(
         fast_period=args.fast_period,
         slow_period=args.slow_period,
@@ -47,9 +40,7 @@ def main() -> None:
     result = strategy.run(data)
 
     if args.output_csv:
-        output_path = Path(args.output_csv)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        result.to_csv(output_path, index=False)
+        output_path = write_output_csv(result, args.output_csv)
         print(f"Wrote strategy output to {output_path}")
         return
 

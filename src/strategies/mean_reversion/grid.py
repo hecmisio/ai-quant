@@ -23,14 +23,14 @@ class GridStrategy(BaseStrategy):
     """Long-only fixed-range grid strategy using DataFrame market data input.
 
     Input contract:
-    - Accepts a time-ordered ``pandas.DataFrame``.
-    - Requires a numeric price column named ``close`` by default.
+    - Accepts a time-ordered "pandas.DataFrame".
+    - Requires a numeric price column named "close" by default.
     - Preserves the input index and original row order in all outputs.
 
     Output contract:
-    - ``generate_signals`` returns the input data plus grid metadata columns,
-      ``signal``, ``target_position``, and ``is_valid_signal_row``.
-    - ``build_positions`` is a pass-through because target positions are
+    - "generate_signals" returns the input data plus grid metadata columns,
+      "signal", "target_position", and "is_valid_signal_row".
+    - "build_positions" is a pass-through because target positions are
       determined directly during signal generation.
     """
 
@@ -93,6 +93,46 @@ class GridStrategy(BaseStrategy):
     def _position_for_bucket(self, bucket: int) -> float:
         return round((self.params.grid_count - bucket) / self.params.grid_count, 10)
 
+    def _bucket_bounds(
+        self, bucket: int, grid_levels: list[float]
+    ) -> tuple[float, float | None]:
+        if bucket >= self.params.grid_count:
+            return grid_levels[-1], None
+        return grid_levels[bucket], grid_levels[bucket + 1]
+
+    def _signal_for_target_change(
+        self, previous_valid_target: float, current_target: float
+    ) -> str:
+        if current_target > previous_valid_target:
+            return "buy"
+        if current_target < previous_valid_target:
+            return "sell"
+        return "hold"
+
+    def _fallback_row_state(self) -> dict[str, int | float | None | str]:
+        return {
+            "grid_bucket": None,
+            "grid_bucket_lower": None,
+            "grid_bucket_upper": None,
+            "target_position": 0.0,
+            "signal": "hold",
+        }
+
+    def _row_state_for_price(
+        self, price: float, previous_valid_target: float, grid_levels: list[float]
+    ) -> dict[str, int | float | None | str]:
+        bucket = self._bucket_for_price(price)
+        target_position = self._position_for_bucket(bucket)
+        bucket_lower, bucket_upper = self._bucket_bounds(bucket, grid_levels)
+        signal = self._signal_for_target_change(previous_valid_target, target_position)
+        return {
+            "grid_bucket": bucket,
+            "grid_bucket_lower": bucket_lower,
+            "grid_bucket_upper": bucket_upper,
+            "target_position": target_position,
+            "signal": signal,
+        }
+
     def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
         prepared = self.prepare_data(data)
         price_series = prepared[self.params.price_column]
@@ -109,32 +149,23 @@ class GridStrategy(BaseStrategy):
 
         for idx, price in price_series.items():
             if not valid_row.loc[idx]:
-                bucket_values.append(None)
-                bucket_lower_values.append(None)
-                bucket_upper_values.append(None)
-                target_positions.append(0.0)
-                signals.append("hold")
+                row_state = self._fallback_row_state()
+                bucket_values.append(row_state["grid_bucket"])
+                bucket_lower_values.append(row_state["grid_bucket_lower"])
+                bucket_upper_values.append(row_state["grid_bucket_upper"])
+                target_positions.append(float(row_state["target_position"]))
+                signals.append(str(row_state["signal"]))
                 continue
 
-            bucket = self._bucket_for_price(float(price))
-            bucket_values.append(bucket)
-            target_position = self._position_for_bucket(bucket)
+            row_state = self._row_state_for_price(
+                float(price), previous_valid_target, grid_levels
+            )
+            bucket_values.append(int(row_state["grid_bucket"]))
+            bucket_lower_values.append(float(row_state["grid_bucket_lower"]))
+            bucket_upper_values.append(row_state["grid_bucket_upper"])
+            target_position = float(row_state["target_position"])
             target_positions.append(target_position)
-
-            if bucket >= self.params.grid_count:
-                bucket_lower_values.append(grid_levels[-1])
-                bucket_upper_values.append(None)
-            else:
-                bucket_lower_values.append(grid_levels[bucket])
-                bucket_upper_values.append(grid_levels[bucket + 1])
-
-            if target_position > previous_valid_target:
-                signal = "buy"
-            elif target_position < previous_valid_target:
-                signal = "sell"
-            else:
-                signal = "hold"
-            signals.append(signal)
+            signals.append(str(row_state["signal"]))
             previous_valid_target = target_position
 
         result = prepared.copy()
@@ -153,14 +184,10 @@ class GridStrategy(BaseStrategy):
         return result
 
     def build_positions(self, signals: pd.DataFrame) -> pd.DataFrame:
-        if "target_position" not in signals.columns:
+        self.validate_signal_output(signals)
+        if self.TARGET_POSITION_COLUMN not in signals.columns:
             raise ValueError("signals data must include 'target_position' column")
         return signals.copy()
-
-    def run(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Convenience wrapper for strategy execution."""
-
-        return self.build_positions(self.generate_signals(data))
 
     def get_params(self) -> dict:
         return {

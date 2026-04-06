@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
+from _common import (
+    default_report_path,
+    filter_by_date,
+    load_price_data,
+    strategy_symbol,
+    write_output_csv,
+)
 from src.backtest import backtest_grid_strategy, plot_grid_backtest, summarize_backtest
-from src.data import normalize_kline_dataframe, read_csv_with_fallback
 from src.strategies.mean_reversion import GridStrategy
 
 
@@ -37,27 +37,14 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def default_output_csv(input_csv: str) -> Path:
-    return ROOT / "outputs" / "reports" / f"{Path(input_csv).stem}.grid.backtest.csv"
-
-
-def default_chart_png(input_csv: str) -> Path:
-    return ROOT / "outputs" / "reports" / f"{Path(input_csv).stem}.grid.backtest.png"
-
-
-def filter_by_date(data, start_date: str | None, end_date: str | None):
-    if "datetime" not in data.columns:
-        return data
-
-    filtered = data.copy()
-    if start_date:
-        filtered = filtered[filtered["datetime"] >= start_date]
-    if end_date:
-        filtered = filtered[filtered["datetime"] <= end_date]
-    return filtered.reset_index(drop=True)
-
-
-def resolve_bounds(data, price_column: str, lower_bound: float | None, upper_bound: float | None, lower_quantile: float, upper_quantile: float) -> tuple[float, float]:
+def resolve_bounds(
+    data,
+    price_column: str,
+    lower_bound: float | None,
+    upper_bound: float | None,
+    lower_quantile: float,
+    upper_quantile: float,
+) -> tuple[float, float]:
     if lower_bound is not None and upper_bound is not None:
         return float(lower_bound), float(upper_bound)
     if not 0 <= lower_quantile < upper_quantile <= 1:
@@ -68,8 +55,7 @@ def resolve_bounds(data, price_column: str, lower_bound: float | None, upper_bou
 
 def main() -> None:
     args = parse_args()
-    raw_data, _ = read_csv_with_fallback(args.input_csv)
-    data = normalize_kline_dataframe(raw_data)
+    data = load_price_data(args.input_csv)
     data = filter_by_date(data, args.start_date, args.end_date)
     if data.empty:
         raise SystemExit("No rows remain after date filtering.")
@@ -100,13 +86,12 @@ def main() -> None:
     )
     summary = summarize_backtest(result)
 
-    output_csv = Path(args.output_csv) if args.output_csv else default_output_csv(args.input_csv)
-    chart_png = Path(args.chart_png) if args.chart_png else default_chart_png(args.input_csv)
+    output_csv = args.output_csv or default_report_path(args.input_csv, "grid.backtest.csv")
+    chart_png = args.chart_png or default_report_path(args.input_csv, "grid.backtest.png")
 
-    output_csv.parent.mkdir(parents=True, exist_ok=True)
-    result.to_csv(output_csv, index=False)
+    output_csv = write_output_csv(result, output_csv)
 
-    symbol = Path(args.input_csv).stem.replace("_KLINE", "")
+    symbol = strategy_symbol(args.input_csv)
     title = "Grid Strategy Backtest"
     subtitle = (
         f"{symbol} | {summary['start_date']} -> {summary['end_date']} | "

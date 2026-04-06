@@ -78,7 +78,21 @@ class MACDStrategy(BaseStrategy):
     def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
         prepared = self.prepare_data(data)
         close = prepared[self.params.price_column]
+        dif, dea, histogram = self._compute_indicator_series(close)
+        valid_row = close.notna() & dif.notna() & dea.notna() & histogram.notna()
+        signals = self._build_signal_series(dif, dea, valid_row)
 
+        result = prepared.copy()
+        result["dif"] = dif
+        result["dea"] = dea
+        result["histogram"] = histogram
+        result["signal"] = signals
+        result["is_valid_signal_row"] = valid_row
+        return result
+
+    def _compute_indicator_series(
+        self, close: pd.Series
+    ) -> tuple[pd.Series, pd.Series, pd.Series]:
         fast_ema = close.ewm(
             span=self.params.fast_period,
             adjust=False,
@@ -96,8 +110,11 @@ class MACDStrategy(BaseStrategy):
             min_periods=self.params.signal_period,
         ).mean()
         histogram = dif - dea
+        return dif, dea, histogram
 
-        valid_row = close.notna() & dif.notna() & dea.notna() & histogram.notna()
+    def _build_signal_series(
+        self, dif: pd.Series, dea: pd.Series, valid_row: pd.Series
+    ) -> pd.Series:
         prev_dif = dif.shift(1)
         prev_dea = dea.shift(1)
 
@@ -106,21 +123,13 @@ class MACDStrategy(BaseStrategy):
             buy_mask &= dif >= 0
         sell_mask = valid_row & (prev_dif >= prev_dea) & (dif < dea)
 
-        signals = pd.Series("hold", index=prepared.index, dtype="object")
+        signals = pd.Series("hold", index=dif.index, dtype="object")
         signals.loc[buy_mask] = "buy"
         signals.loc[sell_mask] = "sell"
-
-        result = prepared.copy()
-        result["dif"] = dif
-        result["dea"] = dea
-        result["histogram"] = histogram
-        result["signal"] = signals
-        result["is_valid_signal_row"] = valid_row
-        return result
+        return signals
 
     def build_positions(self, signals: pd.DataFrame) -> pd.DataFrame:
-        if "signal" not in signals.columns:
-            raise ValueError("signals data must include 'signal' column")
+        self.validate_signal_output(signals)
 
         signal_frame = signals.copy()
         valid_row = signal_frame.get("is_valid_signal_row")
@@ -140,11 +149,6 @@ class MACDStrategy(BaseStrategy):
 
         signal_frame["target_position"] = positions
         return signal_frame
-
-    def run(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Convenience wrapper for strategy execution."""
-
-        return self.build_positions(self.generate_signals(data))
 
     def get_params(self) -> dict:
         return {

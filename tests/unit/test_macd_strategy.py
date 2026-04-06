@@ -92,6 +92,22 @@ def test_invalid_rows_stay_flat_and_reset_position() -> None:
     assert not result.loc[invalid_index, "is_valid_signal_row"]
 
 
+def test_macd_helper_methods_compute_indicators_and_signals() -> None:
+    data = pd.DataFrame({"close": [10, 9, 8, 9, 10, 11, 12, 11, 10, 9, 8, 9, 10]})
+    strategy = MACDStrategy(fast_period=2, slow_period=3, signal_period=2)
+    prepared = strategy.prepare_data(data)
+
+    dif, dea, histogram = strategy._compute_indicator_series(prepared["close"])
+    valid_row = prepared["close"].notna() & dif.notna() & dea.notna() & histogram.notna()
+    signals = strategy._build_signal_series(dif, dea, valid_row)
+
+    assert dif.notna().any()
+    assert dea.notna().any()
+    assert histogram.notna().any()
+    assert signals.iloc[7] == "sell"
+    assert signals.iloc[11] == "buy"
+
+
 def test_script_entry_point_runs() -> None:
     completed = subprocess.run(
         [sys.executable, "scripts/run_macd_strategy.py", str(FIXTURE_PATH)],

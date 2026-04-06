@@ -9,7 +9,7 @@ import pandas as pd
 from src.strategies.mean_reversion import GridStrategy
 
 from .charting import plot_strategy_backtest
-from .macd import backtest_macd_strategy as _backtest_strategy
+from .engine import run_position_backtest
 from .macd import summarize_backtest
 
 
@@ -25,7 +25,7 @@ def backtest_grid_strategy(
 ) -> pd.DataFrame:
     """Run a simple A-share style backtest for the grid strategy."""
 
-    return _backtest_strategy(
+    return run_position_backtest(
         data,
         strategy,
         initial_capital=initial_capital,

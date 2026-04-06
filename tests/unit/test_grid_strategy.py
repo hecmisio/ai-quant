@@ -93,6 +93,26 @@ def test_signal_behavior_covers_single_step_hold_and_multi_step_jump() -> None:
     assert result["target_position"].tolist() == [0.25, 0.25, 0.75, 1.0, 0.0]
 
 
+def test_grid_row_state_helpers_are_deterministic() -> None:
+    strategy = GridStrategy(lower_bound=90, upper_bound=110, grid_count=4)
+    grid_levels = strategy._build_grid_levels()
+
+    assert strategy._bucket_bounds(1, grid_levels) == (95.0, 100.0)
+    assert strategy._bucket_bounds(4, grid_levels) == (110.0, None)
+    assert strategy._signal_for_target_change(0.25, 0.75) == "buy"
+    assert strategy._signal_for_target_change(0.75, 0.25) == "sell"
+    assert strategy._signal_for_target_change(0.75, 0.75) == "hold"
+
+    row_state = strategy._row_state_for_price(97.0, 0.25, grid_levels)
+    assert row_state == {
+        "grid_bucket": 1,
+        "grid_bucket_lower": 95.0,
+        "grid_bucket_upper": 100.0,
+        "target_position": 0.75,
+        "signal": "buy",
+    }
+
+
 def test_script_entry_point_runs() -> None:
     completed = subprocess.run(
         [
