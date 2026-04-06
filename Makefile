@@ -1,4 +1,4 @@
-.PHONY: help venv install-dev test normalize macd-signal backtest-macd clean clean-reports
+.PHONY: help venv install-dev test normalize macd-signal grid-signal backtest-macd backtest-grid clean clean-reports
 
 PYTHON ?= .\.venv\Scripts\python.exe
 RAW_CSV ?= data/raw/600519_KLINE.csv
@@ -11,6 +11,9 @@ FEE_RATE ?= 0.0001
 STAMP_DUTY_RATE ?= 0.001
 SLIPPAGE_RATE ?= 0.0005
 LOT_SIZE ?= 100
+GRID_LOWER ?= 90
+GRID_UPPER ?= 110
+GRID_COUNT ?= 4
 
 help:
 	@echo Available targets:
@@ -19,7 +22,9 @@ help:
 	@echo   make test
 	@echo   make normalize RAW_CSV=data/raw/600519_KLINE.csv
 	@echo   make macd-signal RAW_CSV=data/raw/600519_KLINE.csv
+	@echo   make grid-signal RAW_CSV=data/raw/600519_KLINE.csv GRID_LOWER=90 GRID_UPPER=110 GRID_COUNT=4
 	@echo   make backtest-macd RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31
+	@echo   make backtest-grid RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31 GRID_LOWER=90 GRID_UPPER=110 GRID_COUNT=8
 	@echo   make clean-reports
 	@echo   make clean
 
@@ -38,8 +43,14 @@ normalize:
 macd-signal:
 	$(PYTHON) scripts/run_macd_strategy.py $(RAW_CSV)
 
+grid-signal:
+	$(PYTHON) scripts/run_grid_strategy.py $(RAW_CSV) --lower-bound $(GRID_LOWER) --upper-bound $(GRID_UPPER) --grid-count $(GRID_COUNT)
+
 backtest-macd:
 	$(PYTHON) scripts/backtest_macd.py $(RAW_CSV) --start-date $(BACKTEST_START) --end-date $(BACKTEST_END) --initial-capital $(INITIAL_CAPITAL) --position-size $(POSITION_SIZE) --fee-rate $(FEE_RATE) --stamp-duty-rate $(STAMP_DUTY_RATE) --slippage-rate $(SLIPPAGE_RATE) --lot-size $(LOT_SIZE)
+
+backtest-grid:
+	$(PYTHON) scripts/backtest_grid.py $(RAW_CSV) --start-date $(BACKTEST_START) --end-date $(BACKTEST_END) --lower-bound $(GRID_LOWER) --upper-bound $(GRID_UPPER) --grid-count $(GRID_COUNT) --initial-capital $(INITIAL_CAPITAL) --position-size $(POSITION_SIZE) --fee-rate $(FEE_RATE) --stamp-duty-rate $(STAMP_DUTY_RATE) --slippage-rate $(SLIPPAGE_RATE) --lot-size $(LOT_SIZE)
 
 clean-reports:
 	@if exist outputs\\reports\\*.csv del /q outputs\\reports\\*.csv

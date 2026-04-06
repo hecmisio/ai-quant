@@ -8,6 +8,7 @@ The current repo includes:
 
 - K-line CSV normalization for non-UTF-8 files and Chinese column names
 - A long-only MACD strategy
+- A fixed-range long-only grid strategy
 - MACD backtesting with capital, position sizing, fee, stamp duty, slippage, and A-share lot-size constraints
 - Chart export with price, buy/sell execution points, MACD panel, capital curve, and summary cards
 
@@ -45,7 +46,9 @@ Common targets:
 - `make test`
 - `make normalize RAW_CSV=data/raw/600519_KLINE.csv`
 - `make macd-signal RAW_CSV=data/raw/600519_KLINE.csv`
+- `make grid-signal RAW_CSV=data/raw/600519_KLINE.csv GRID_LOWER=90 GRID_UPPER=110 GRID_COUNT=4`
 - `make backtest-macd RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31`
+- `make backtest-grid RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31 GRID_LOWER=90 GRID_UPPER=110 GRID_COUNT=8`
 - `make clean-reports`
 - `make clean`
 
@@ -93,6 +96,20 @@ Or:
 make macd-signal RAW_CSV=data/raw/600519_KLINE.csv
 ```
 
+## Run Grid Signals
+
+Generate fixed-range grid signals from a CSV file:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/run_grid_strategy.py data/raw/600519_KLINE.csv --lower-bound 90 --upper-bound 110 --grid-count 4
+```
+
+Or:
+
+```powershell
+make grid-signal RAW_CSV=data/raw/600519_KLINE.csv GRID_LOWER=90 GRID_UPPER=110 GRID_COUNT=4
+```
+
 ## Run MACD Backtest
 
 Backtest MACD on a raw or normalized CSV:
@@ -112,6 +129,22 @@ The backtest outputs:
 - result CSV under `outputs/reports/`
 - chart PNG under `outputs/reports/`
 
+## Run Grid Backtest
+
+Backtest the grid strategy on a raw or normalized CSV:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/backtest_grid.py data/raw/600519_KLINE.csv --start-date 2025-01-01 --end-date 2025-12-31 --lower-bound 1385 --upper-bound 1510 --grid-count 8 --initial-capital 1000000
+```
+
+Or:
+
+```powershell
+make backtest-grid RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31 GRID_LOWER=1385 GRID_UPPER=1510 GRID_COUNT=8
+```
+
+If `--lower-bound` and `--upper-bound` are omitted, the script derives them from the selected sample using `--lower-quantile` and `--upper-quantile` (defaults: `0.1` / `0.9`).
+
 ## Cleanup
 
 Remove generated report files:
@@ -129,7 +162,8 @@ make clean
 ## Project Layout
 
 - `src/data/`: CSV reading and normalization
-- `src/strategies/trend/`: strategy implementations
+- `src/strategies/trend/`: trend-following strategies
+- `src/strategies/mean_reversion/`: mean-reversion and range-bound strategies
 - `src/backtest/`: backtest and plotting logic
 - `scripts/`: executable entry points
 - `tests/`: pytest test suite
