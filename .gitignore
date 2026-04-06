@@ -2,6 +2,14 @@
 tmp.md
 .codex/
 
+# Project data and runtime outputs
+data/**
+!data/.gitkeep
+!data/**/.gitkeep
+outputs/**
+!outputs/.gitkeep
+!outputs/**/.gitkeep
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
