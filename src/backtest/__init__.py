@@ -11,12 +11,14 @@ plotting entry points stay centralized.
 
 from .engine import run_position_backtest
 from .grid import backtest_grid_strategy, plot_grid_backtest
+from .charting import plot_kline_volume_chart
 from .macd import backtest_macd_strategy, plot_macd_backtest, summarize_backtest
 
 __all__ = [
     "run_position_backtest",
     "backtest_grid_strategy",
     "plot_grid_backtest",
+    "plot_kline_volume_chart",
     "backtest_macd_strategy",
     "plot_macd_backtest",
     "summarize_backtest",

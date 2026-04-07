@@ -23,11 +23,13 @@ matplotlib.rcParams["axes.unicode_minus"] = False
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
+from matplotlib.patches import Rectangle
 import pandas as pd
 
 
 SummaryLine = tuple[str, str, str]
 SummarySection = dict[str, Sequence[SummaryLine] | str]
+REQUIRED_KLINE_VOLUME_COLUMNS = ("open", "high", "low", "close", "volume")
 
 
 def extract_trades(result: pd.DataFrame) -> pd.DataFrame:
@@ -234,6 +236,34 @@ def plot_strategy_backtest(
     return target_path
 
 
+def plot_kline_volume_chart(
+    data: pd.DataFrame,
+    output_path: str | Path,
+    title: str | None = None,
+    subtitle: str | None = None,
+) -> Path:
+    _validate_kline_volume_data(data)
+
+    chart_data = data.reset_index(drop=True).copy()
+    x_axis = pd.Series(range(len(chart_data)), index=chart_data.index, dtype=float)
+    figure, axes = plt.subplots(2, 1, figsize=(16, 8.8), sharex=True, height_ratios=[3.2, 1.2])
+    _render_candlestick_panel(axes[0], x_axis, chart_data)
+    _render_volume_panel(axes[1], x_axis, chart_data)
+    _format_shared_x_axis(axes[1], chart_data)
+
+    if title:
+        figure.text(0.06, 0.965, title, ha="left", va="top", fontsize=18, fontweight="bold", color="#0f172a")
+    if subtitle:
+        figure.text(0.06, 0.935, subtitle, ha="left", va="top", fontsize=11, color="#475569")
+
+    figure.tight_layout(rect=(0, 0, 1, 0.9))
+    target_path = Path(output_path)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(target_path, dpi=160, bbox_inches="tight")
+    plt.close(figure)
+    return target_path
+
+
 def _render_price_panel(axis, x_axis: pd.Series, result: pd.DataFrame, buy_points: pd.Series, sell_points: pd.Series) -> None:
     for start_idx, end_idx in holding_spans(result):
         axis.axvspan(x_axis.iloc[start_idx], x_axis.iloc[end_idx], color="#d4efdf", alpha=0.28, lw=0)
@@ -261,6 +291,73 @@ def _render_price_panel(axis, x_axis: pd.Series, result: pd.DataFrame, buy_point
     axis.set_ylabel("Price")
     axis.legend(loc="upper left")
     axis.grid(alpha=0.25)
+
+
+def _validate_kline_volume_data(data: pd.DataFrame) -> None:
+    if data.empty:
+        raise ValueError("chart data must not be empty")
+
+    missing_columns = [column for column in REQUIRED_KLINE_VOLUME_COLUMNS if column not in data.columns]
+    if missing_columns:
+        raise ValueError(f"chart data must include columns: {', '.join(REQUIRED_KLINE_VOLUME_COLUMNS)}")
+
+
+def _render_candlestick_panel(axis, x_axis: pd.Series, data: pd.DataFrame) -> None:
+    candle_width = 0.62
+
+    for idx, row in data.iterrows():
+        open_price = float(row["open"])
+        high_price = float(row["high"])
+        low_price = float(row["low"])
+        close_price = float(row["close"])
+        x_value = float(x_axis.iloc[idx])
+        color = "#c0392b" if close_price >= open_price else "#148f3c"
+
+        axis.vlines(x_value, low_price, high_price, color=color, linewidth=1.0, zorder=2)
+
+        body_bottom = min(open_price, close_price)
+        body_height = max(abs(close_price - open_price), 0.01)
+        candle = Rectangle(
+            (x_value - candle_width / 2, body_bottom),
+            candle_width,
+            body_height,
+            facecolor=color,
+            edgecolor=color,
+            linewidth=0.8,
+            alpha=0.85,
+            zorder=3,
+        )
+        axis.add_patch(candle)
+
+    axis.set_ylabel("Price")
+    axis.grid(alpha=0.25)
+    axis.set_xlim(-0.8, len(data) - 0.2)
+
+
+def _render_volume_panel(axis, x_axis: pd.Series, data: pd.DataFrame) -> None:
+    colors = ["#c0392b" if float(close_price) >= float(open_price) else "#148f3c" for open_price, close_price in zip(data["open"], data["close"])]
+    axis.bar(x_axis.tolist(), data["volume"].tolist(), width=0.62, color=colors, alpha=0.72)
+    axis.set_ylabel("Volume")
+    axis.set_xlabel("Date" if "datetime" in data.columns else "Row")
+    axis.grid(alpha=0.2, axis="y")
+
+
+def _format_shared_x_axis(axis, data: pd.DataFrame) -> None:
+    if data.empty:
+        return
+
+    tick_count = min(8, len(data))
+    if tick_count <= 1:
+        tick_positions = [0]
+    else:
+        tick_positions = sorted({round(index * (len(data) - 1) / (tick_count - 1)) for index in range(tick_count)})
+
+    axis.set_xticks(tick_positions)
+    if "datetime" in data.columns:
+        labels = [str(pd.Timestamp(data.iloc[position]["datetime"]).date()) for position in tick_positions]
+    else:
+        labels = [str(position) for position in tick_positions]
+    axis.set_xticklabels(labels, rotation=25, ha="right")
 
 
 def _render_capital_panel(axis, x_axis: pd.Series, result: pd.DataFrame) -> None:
