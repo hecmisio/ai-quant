@@ -205,4 +205,11 @@ The repository is moving toward a hexagonal architecture:
 - `adapters` contain implementations for CLI, AkShare, filesystem, and persistence
 - `db` contains SQLAlchemy models and session factories
 
-When adding new code, prefer the new structure over `src/data/`. The detailed architectural constraints are documented in [docs/ai-quant/AI量化-六边形架构约束.md](docs/ai-quant/AI量化-六边形架构约束.md).
+Naming conventions:
+
+- external data readers use `*Provider`
+- persistence adapters use `*Gateway` by default and `*Repository` only when aggregate-oriented storage abstractions are needed
+- CLI adapters live under `src/adapters/inbound/cli/` and expose `run_*_command`
+- legacy paths such as `src/data/` are compatibility facades, not primary implementation targets
+
+The detailed architectural constraints and migration priorities are documented in [docs/ai-quant/AI量化-六边形架构约束.md](docs/ai-quant/AI量化-六边形架构约束.md).

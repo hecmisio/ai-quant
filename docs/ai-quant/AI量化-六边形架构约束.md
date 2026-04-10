@@ -82,6 +82,7 @@
 
 - port：`src/application/ports/*.py`
 - adapter：`src/adapters/outbound/market_data/*.py`
+- 命名：优先使用 `*Provider`
 
 规则：
 
@@ -93,6 +94,9 @@
 - port：`src/application/ports/*.py`
 - adapter：`src/adapters/outbound/persistence/*.py`
 - infra：`db/models.py`、`db/session.py`
+- 命名：
+  - 以持久化写入和查询为主的 adapter 优先使用 `*Gateway`
+  - 需要表达聚合级持久化抽象时可使用 `*Repository`
 
 规则：
 
@@ -103,11 +107,20 @@
 
 - adapter：`src/adapters/inbound/cli/*.py`
 - `scripts/*.py` 只保留极薄的启动包装
+- 命名：CLI 适配器优先使用 `*_cli.py`，并暴露 `run_*_command`
 
 规则：
 
 - 参数解析和输出展示属于 inbound adapter
 - `scripts/*.py` 不承载业务逻辑或 SQL
+
+## 命名约定
+
+- 从外部系统读取或拉取数据的端口或适配器，优先命名为 `Provider`
+- 向数据库、文件系统、下游系统写入或协调持久化的端口或适配器，优先命名为 `Gateway`
+- 当某个持久化抽象需要围绕领域聚合组织时，再使用 `Repository`
+- 应用层编排入口放在 `src/application/services/`，优先使用 `run_*_workflow`、`build_*`、`export_*` 这类清晰动作命名
+- CLI 入口放在 `src/adapters/inbound/cli/`，优先使用 `run_*_command`
 
 ## 迁移策略
 
@@ -122,6 +135,11 @@
 
 - 仅作为兼容 facade 或过渡 re-export
 - 不再新增新的核心逻辑
+
+类似约束同样适用于其他历史兼容路径：
+
+- `src/strategies/` 可以在迁移期保留 facade，但新的核心策略规则优先进入 `src/domain/strategies/`
+- `scripts/` 可以保留启动包装，但新的参数解析和命令编排优先进入 `src/adapters/inbound/cli/`
 
 ## Code Review 检查项
 
@@ -154,8 +172,27 @@
   - CSV 读取与 UTF-8 写出
   - CLI entrypoint
 
+### MACD 策略与回测工作流
+
+- domain：MACD 指标与信号规则
+- application：MACD 信号运行与回测编排
+- adapters：
+  - CLI entrypoint
+  - 复用现有回测与输出能力的适配层
+- compatibility：
+  - `src/strategies/` 继续暴露兼容导出
+
+## 下一批迁移优先级
+
+建议按以下顺序继续迁移：
+
+1. `grid` 策略信号与回测链路
+2. `backtest/engine.py` 周边的编排与输出入口
+3. `pipelines/` 中未来的跨模块流程
+4. `execution/` 与 `risk/` 的真实端口边界
+5. `portfolio/` 与 `factors/` 的应用层编排
+
 ## 后续建议
 
-- 对 `backtest/`、`strategies/`、`pipelines/` 也逐步建立相同的 port/adaptor 边界
-- 为不同数据源建立统一的 `Provider` port 命名约定
-- 为不同落库流程建立统一的 `Gateway` / `Repository` 约定
+- 对 `backtest/`、`strategies/`、`pipelines/` 继续按同一命名和边界规则推进
+- 优先迁移那些已经拥有稳定 CLI 和测试的工作流，再处理更深层的共享引擎
