@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.data import normalize_kline_dataframe, read_csv_with_fallback
+from src.adapters.outbound.filesystem import read_csv_with_fallback
+from src.domain.market_data import normalize_kline_dataframe
 
 
 def load_price_data(input_csv: str) -> pd.DataFrame:

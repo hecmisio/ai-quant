@@ -185,9 +185,24 @@ make clean
 
 ## Project Layout
 
-- `src/data/`: CSV reading and normalization
+- `src/domain/`: pure business rules and transformations
+- `src/application/`: use cases and port definitions
+- `src/adapters/`: inbound and outbound adapters such as CLI, AkShare, filesystem, and persistence
+- `db/`: database infrastructure including ORM models, sessions, and SQL schema
+- `src/data/`: compatibility facade for older imports, to be phased out
 - `src/strategies/trend/`: trend-following strategies
 - `src/strategies/mean_reversion/`: mean-reversion and range-bound strategies
 - `src/backtest/`: backtest and plotting logic
 - `scripts/`: executable entry points
 - `tests/`: pytest test suite
+
+## Architecture
+
+The repository is moving toward a hexagonal architecture:
+
+- `domain` contains pure business logic
+- `application` contains use cases and ports
+- `adapters` contain implementations for CLI, AkShare, filesystem, and persistence
+- `db` contains SQLAlchemy models and session factories
+
+When adding new code, prefer the new structure over `src/data/`. The detailed architectural constraints are documented in [docs/ai-quant/AI量化-六边形架构约束.md](docs/ai-quant/AI量化-六边形架构约束.md).

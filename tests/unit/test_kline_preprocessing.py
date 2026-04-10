@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.data.kline import normalize_kline_csv, normalize_kline_dataframe, read_csv_with_fallback
+from src.adapters.outbound.filesystem.kline_csv import normalize_kline_csv, read_csv_with_fallback
+from src.domain.market_data.kline import normalize_kline_dataframe
 
 
 RAW_KLINE_PATH = Path("data/raw/000681_KLINE.csv")

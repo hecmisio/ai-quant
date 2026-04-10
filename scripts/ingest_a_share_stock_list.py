@@ -1,4 +1,4 @@
-"""Fetch the A-share stock universe and exclude ST and B shares by default."""
+"""Ingest the normalized A-share stock list into Anne PostgreSQL."""
 
 from __future__ import annotations
 
@@ -9,11 +9,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.adapters.inbound.cli.a_share_cli import run_fetch_command
+from src.adapters.inbound.cli.a_share_cli import run_ingest_command
 
 
 def main() -> None:
-    run_fetch_command()
+    run_ingest_command()
 
 
 if __name__ == "__main__":

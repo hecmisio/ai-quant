@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.data.a_share import (
+from src.adapters.outbound.market_data.akshare_a_share import AkShareAStockListProvider
+from src.domain.market_data.a_share import (
     fetch_a_share_stock_list,
     filter_a_share_stocks,
     filter_st_stocks,
@@ -88,3 +89,13 @@ def test_fetch_a_share_stock_list_can_include_st_but_not_b_shares() -> None:
     result = fetch_a_share_stock_list(fetcher=fake_fetcher, include_st=True)
 
     assert result["symbol"].tolist() == ["600519", "000001"]
+
+
+def test_akshare_provider_implements_provider_port_with_custom_fetcher() -> None:
+    provider = AkShareAStockListProvider(
+        fetcher=lambda: pd.DataFrame({"code": ["600519", "200002"], "name": ["贵州茅台", "万科B"]})
+    )
+
+    result = provider.fetch_stock_list(include_st=False)
+
+    assert result["symbol"].tolist() == ["600519"]
