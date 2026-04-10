@@ -1,2 +1,3 @@
 pytest>=8.0
 matplotlib>=3.10
+akshare>=1.16
