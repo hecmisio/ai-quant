@@ -1,0 +1,25 @@
+services:
+  anne-postgres:
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
+    container_name: anne-postgres
+    environment:
+      POSTGRES_DB: ${ANNE_POSTGRES_DB:-anne}
+      POSTGRES_USER: ${ANNE_POSTGRES_USER:-anne}
+      POSTGRES_PASSWORD: ${ANNE_POSTGRES_PASSWORD:-anne_dev_password}
+      TIMESCALEDB_TELEMETRY: ${ANNE_TIMESCALEDB_TELEMETRY:-off}
+    ports:
+      - "${ANNE_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - anne_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  anne_postgres_data:

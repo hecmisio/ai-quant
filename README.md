@@ -29,6 +29,30 @@ Run tests:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
+## Database Bootstrap
+
+The repository includes a local Anne database bootstrap based on `PostgreSQL 18.3`, `TimescaleDB 2.26.2`, and `pgvector`.
+
+- `ANNE_POSTGRES_DB`: database name created on first initialization
+- `ANNE_POSTGRES_USER`: database user created on first initialization
+- `ANNE_POSTGRES_PASSWORD`: password for the database user
+- `ANNE_POSTGRES_PORT`: host port mapped to the PostgreSQL container
+- `ANNE_TIMESCALEDB_TELEMETRY`: TimescaleDB telemetry setting, default `off`
+
+`docker compose` reads variables from a repository-root `.env` file automatically. For local setup, copy the example values into a root `.env` file or export the variables in your shell before starting the service.
+
+Start the database:
+
+```powershell
+docker compose up -d --build anne-postgres
+```
+
+Verify the extensions:
+
+```powershell
+docker compose exec anne-postgres psql -U anne -d anne -c "SELECT extname, extversion FROM pg_extension WHERE extname IN ('timescaledb', 'vector') ORDER BY extname;"
+```
+
 ## Makefile Commands
 
 The repo now includes a `Makefile` for common workflows.
