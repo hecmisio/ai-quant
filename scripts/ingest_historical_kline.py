@@ -1,4 +1,4 @@
-"""Run a simple MACD backtest and export chart artifacts."""
+"""Ingest provider-backed historical K-line data into Anne PostgreSQL."""
 
 from __future__ import annotations
 
@@ -9,11 +9,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.adapters.inbound.cli.macd_cli import run_macd_backtest_command
+from src.adapters.inbound.cli.historical_kline_cli import run_ingest_command
 
 
 def main() -> None:
-    run_macd_backtest_command()
+    run_ingest_command()
 
 
 if __name__ == "__main__":

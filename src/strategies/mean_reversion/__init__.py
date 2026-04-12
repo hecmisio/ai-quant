@@ -1,5 +1,3 @@
-"""Mean-reversion strategy implementations."""
+"""Mean-reversion strategy namespace."""
 
-from .grid import GridStrategy
-
-__all__ = ["GridStrategy"]
+__all__: list[str] = []

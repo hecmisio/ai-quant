@@ -172,25 +172,24 @@
   - CSV 读取与 UTF-8 写出
   - CLI entrypoint
 
-### MACD 策略与回测工作流
+### 通用策略与回测工作流
 
-- domain：MACD 指标与信号规则
-- application：MACD 信号运行与回测编排
+- domain：策略规则与信号生成逻辑
+- application：策略运行与工作流编排
 - adapters：
   - CLI entrypoint
   - 复用现有回测与输出能力的适配层
 - compatibility：
-  - `src/strategies/` 继续暴露兼容导出
+  - `src/strategies/` 在迁移期继续保留兼容边界
 
 ## 下一批迁移优先级
 
 建议按以下顺序继续迁移：
 
-1. `grid` 策略信号与回测链路
-2. `backtest/engine.py` 周边的编排与输出入口
-3. `pipelines/` 中未来的跨模块流程
-4. `execution/` 与 `risk/` 的真实端口边界
-5. `portfolio/` 与 `factors/` 的应用层编排
+1. `backtest/engine.py` 周边的编排与输出入口
+2. `pipelines/` 中未来的跨模块流程
+3. `execution/` 与 `risk/` 的真实端口边界
+4. `portfolio/` 与 `factors/` 的应用层编排
 
 ## 后续建议
 

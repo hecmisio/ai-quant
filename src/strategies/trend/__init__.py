@@ -1,5 +1,3 @@
-"""The trend-following strategy implementations."""
+"""Trend-following strategy namespace."""
 
-from .macd import MACDStrategy
-
-__all__ = ["MACDStrategy"]
+__all__: list[str] = []

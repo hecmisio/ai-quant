@@ -14,7 +14,7 @@ The existing plotting stack in `src/backtest/charting.py` already configures a h
 
 **Non-Goals:**
 - Adding interactive charts, HTML outputs, or browser-based visualization.
-- Changing the existing MACD or grid backtest chart layouts.
+- Changing any existing strategy backtest chart layouts.
 - Supporting every optional market field such as turnover, amount, or open interest in the first version.
 - Introducing a new third-party candlestick library when the current `matplotlib` stack is sufficient.
 

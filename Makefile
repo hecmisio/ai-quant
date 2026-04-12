@@ -1,19 +1,16 @@
-.PHONY: help venv install-dev test normalize macd-signal grid-signal backtest-macd backtest-grid clean clean-reports
+.PHONY: help venv install-dev test normalize ingest-historical-kline clean clean-reports
 
 PYTHON ?= .\.venv\Scripts\python.exe
 RAW_CSV ?= data/raw/600519_KLINE.csv
 NORMALIZED_CSV ?= data/processed/600519_KLINE.normalized.csv
 BACKTEST_START ?= 2025-01-01
 BACKTEST_END ?= 2025-12-31
-INITIAL_CAPITAL ?= 1000000
-POSITION_SIZE ?= 0.5
-FEE_RATE ?= 0.0001
-STAMP_DUTY_RATE ?= 0.001
-SLIPPAGE_RATE ?= 0.0005
-LOT_SIZE ?= 100
-GRID_LOWER ?= 90
-GRID_UPPER ?= 110
-GRID_COUNT ?= 4
+EXCHANGE ?= SSE
+SYMBOL ?= 600519
+TIMEFRAME ?= 1d
+ADJUSTMENT_TYPE ?= none
+START_DATE ?=
+END_DATE ?=
 
 help:
 	@echo Available targets:
@@ -21,10 +18,7 @@ help:
 	@echo   make install-dev
 	@echo   make test
 	@echo   make normalize RAW_CSV=data/raw/600519_KLINE.csv
-	@echo   make macd-signal RAW_CSV=data/raw/600519_KLINE.csv
-	@echo   make grid-signal RAW_CSV=data/raw/600519_KLINE.csv GRID_LOWER=90 GRID_UPPER=110 GRID_COUNT=4
-	@echo   make backtest-macd RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31
-	@echo   make backtest-grid RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31 GRID_LOWER=90 GRID_UPPER=110 GRID_COUNT=8
+	@echo   make ingest-historical-kline EXCHANGE=SSE SYMBOL=600519 TIMEFRAME=1d ADJUSTMENT_TYPE=none START_DATE=2024-01-01 END_DATE=2024-12-31
 	@echo   make clean-reports
 	@echo   make clean
 
@@ -40,17 +34,8 @@ test:
 normalize:
 	$(PYTHON) scripts/normalize_kline_csv.py $(RAW_CSV) --output-csv $(NORMALIZED_CSV)
 
-macd-signal:
-	$(PYTHON) scripts/run_macd_strategy.py $(RAW_CSV)
-
-grid-signal:
-	$(PYTHON) scripts/run_grid_strategy.py $(RAW_CSV) --lower-bound $(GRID_LOWER) --upper-bound $(GRID_UPPER) --grid-count $(GRID_COUNT)
-
-backtest-macd:
-	$(PYTHON) scripts/backtest_macd.py $(RAW_CSV) --start-date $(BACKTEST_START) --end-date $(BACKTEST_END) --initial-capital $(INITIAL_CAPITAL) --position-size $(POSITION_SIZE) --fee-rate $(FEE_RATE) --stamp-duty-rate $(STAMP_DUTY_RATE) --slippage-rate $(SLIPPAGE_RATE) --lot-size $(LOT_SIZE)
-
-backtest-grid:
-	$(PYTHON) scripts/backtest_grid.py $(RAW_CSV) --start-date $(BACKTEST_START) --end-date $(BACKTEST_END) --lower-bound $(GRID_LOWER) --upper-bound $(GRID_UPPER) --grid-count $(GRID_COUNT) --initial-capital $(INITIAL_CAPITAL) --position-size $(POSITION_SIZE) --fee-rate $(FEE_RATE) --stamp-duty-rate $(STAMP_DUTY_RATE) --slippage-rate $(SLIPPAGE_RATE) --lot-size $(LOT_SIZE)
+ingest-historical-kline:
+	$(PYTHON) scripts/ingest_historical_kline.py --exchange $(EXCHANGE) --symbol $(SYMBOL) --timeframe $(TIMEFRAME) --adjustment-type $(ADJUSTMENT_TYPE) $(if $(START_DATE),--start-date $(START_DATE),) $(if $(END_DATE),--end-date $(END_DATE),)
 
 clean-reports:
 	@if exist outputs\\reports\\*.csv del /q outputs\\reports\\*.csv

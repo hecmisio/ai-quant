@@ -7,10 +7,9 @@ AI-based quantitative strategy experiments. This repository is for research and 
 The current repo includes:
 
 - K-line CSV normalization for non-UTF-8 files and Chinese column names
-- A long-only MACD strategy
-- A fixed-range long-only grid strategy
-- MACD backtesting with capital, position sizing, fee, stamp duty, slippage, and A-share lot-size constraints
-- Chart export with price, buy/sell execution points, MACD panel, capital curve, and summary cards
+- A-share stock-list fetching and Anne PostgreSQL ingestion
+- Historical K-line fetching from AkShare and persistence into Anne `market_bars`
+- K-line and volume chart export for normalized price data
 
 ## Environment
 
@@ -69,21 +68,9 @@ Common targets:
 - `make install-dev`
 - `make test`
 - `make normalize RAW_CSV=data/raw/600519_KLINE.csv`
-- `make macd-signal RAW_CSV=data/raw/600519_KLINE.csv`
-- `make grid-signal RAW_CSV=data/raw/600519_KLINE.csv GRID_LOWER=90 GRID_UPPER=110 GRID_COUNT=4`
-- `make backtest-macd RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31`
-- `make backtest-grid RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31 GRID_LOWER=90 GRID_UPPER=110 GRID_COUNT=8`
+- `make ingest-historical-kline EXCHANGE=SSE SYMBOL=600519 TIMEFRAME=1d ADJUSTMENT_TYPE=none START_DATE=2024-01-01 END_DATE=2024-12-31`
 - `make clean-reports`
 - `make clean`
-
-Default backtest parameters in the `Makefile`:
-
-- `INITIAL_CAPITAL=1000000`
-- `POSITION_SIZE=0.5`
-- `FEE_RATE=0.0001`
-- `STAMP_DUTY_RATE=0.001`
-- `SLIPPAGE_RATE=0.0005`
-- `LOT_SIZE=100`
 
 ## Data Normalization
 
@@ -106,68 +93,33 @@ make normalize RAW_CSV=data/raw/600519_KLINE.csv
 
 By default, the normalized file is written under `data/processed/`.
 
-## Run MACD Signals
+## Ingest Historical K-line Data
 
-Generate MACD indicator and signal output from a CSV file:
+Fetch provider-backed historical K-line bars for an existing Anne instrument and persist them into `market_bars`:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/run_macd_strategy.py data/raw/600519_KLINE.csv
+.\.venv\Scripts\python.exe scripts/ingest_historical_kline.py --exchange SSE --symbol 600519 --timeframe 1d --adjustment-type none --start-date 2024-01-01 --end-date 2024-12-31
 ```
 
 Or:
 
 ```powershell
-make macd-signal RAW_CSV=data/raw/600519_KLINE.csv
+make ingest-historical-kline EXCHANGE=SSE SYMBOL=600519 TIMEFRAME=1d ADJUSTMENT_TYPE=none START_DATE=2024-01-01 END_DATE=2024-12-31
 ```
 
-## Run Grid Signals
-
-Generate fixed-range grid signals from a CSV file:
+Fetch all matching Anne instruments concurrently with a terminal progress bar:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/run_grid_strategy.py data/raw/600519_KLINE.csv --lower-bound 90 --upper-bound 110 --grid-count 4
+.\.venv\Scripts\python.exe scripts/ingest_historical_kline.py --all-instruments --instrument-type equity --instrument-status active --timeframe 1d --adjustment-type none --start-date 2024-01-01 --end-date 2024-12-31 --max-workers 8
 ```
 
-Or:
+Notes:
 
-```powershell
-make grid-signal RAW_CSV=data/raw/600519_KLINE.csv GRID_LOWER=90 GRID_UPPER=110 GRID_COUNT=4
-```
-
-## Run MACD Backtest
-
-Backtest MACD on a raw or normalized CSV:
-
-```powershell
-.\.venv\Scripts\python.exe scripts/backtest_macd.py data/raw/600519_KLINE.csv --start-date 2025-01-01 --end-date 2025-12-31 --initial-capital 1000000 --position-size 0.5
-```
-
-Or:
-
-```powershell
-make backtest-macd RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31
-```
-
-The backtest outputs:
-
-- result CSV under `outputs/reports/`
-- chart PNG under `outputs/reports/`
-
-## Run Grid Backtest
-
-Backtest the grid strategy on a raw or normalized CSV:
-
-```powershell
-.\.venv\Scripts\python.exe scripts/backtest_grid.py data/raw/600519_KLINE.csv --start-date 2025-01-01 --end-date 2025-12-31 --lower-bound 1385 --upper-bound 1510 --grid-count 8 --initial-capital 1000000
-```
-
-Or:
-
-```powershell
-make backtest-grid RAW_CSV=data/raw/600519_KLINE.csv BACKTEST_START=2025-01-01 BACKTEST_END=2025-12-31 GRID_LOWER=1385 GRID_UPPER=1510 GRID_COUNT=8
-```
-
-If `--lower-bound` and `--upper-bound` are omitted, the script derives them from the selected sample using `--lower-quantile` and `--upper-quantile` (defaults: `0.1` / `0.9`).
+- The target instrument must already exist in Anne `instruments`.
+- The first implementation fetches historical bars through AkShare.
+- Supported v1 timeframes are `1d`, `1w`, and `1m`.
+- Supported v1 adjustment types are `none`, `qfq`, and `hfq`.
+- `--all-instruments` mode resolves targets from Anne `instruments`, fetches them concurrently, and prints a live progress bar plus a bulk summary.
 
 ## Cleanup
 
@@ -190,9 +142,8 @@ make clean
 - `src/adapters/`: inbound and outbound adapters such as CLI, AkShare, filesystem, and persistence
 - `db/`: database infrastructure including ORM models, sessions, and SQL schema
 - `src/data/`: compatibility facade for older imports, to be phased out
-- `src/strategies/trend/`: trend-following strategies
-- `src/strategies/mean_reversion/`: mean-reversion and range-bound strategies
-- `src/backtest/`: backtest and plotting logic
+- `src/strategies/`: shared strategy contracts and compatibility namespaces
+- `src/backtest/`: generic backtest utilities and plotting logic
 - `scripts/`: executable entry points
 - `tests/`: pytest test suite
 
